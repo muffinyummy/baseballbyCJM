@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>야구 게임 개인 스코어보드</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #e5e7eb;          /* 연한 회색 배경 */
+      color: #111827;               /* 진한 회색 텍스트 */
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px 12px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1100px;
+      background: #ffffff;          /* 하얀 카드 */
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+      padding: 20px 18px 24px;
+      border: 1px solid #d1d5db;    /* 옅은 회색 테두리 */
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      text-align: center;
+      font-size: 1.5rem;
+      color: #111827;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #6b7280;
+      margin-bottom: 14px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.85rem;
+    }
+
+    .field label {
+      color: #4b5563;
+      font-weight: 500;
+    }
+
+    .field input,
+    .field select {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #111827;
+      font-size: 0.9rem;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+    }
+
+    .player-names {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .current-inning {
+      margin: 4px 0 10px;
+      font-size: 0.9rem;
+      text-align: center;
+      color: #b45309; /* 살짝 주황 톤 */
+      font-weight: 600;
+    }
+
+    .buttons-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: #f3f4f6;
+      color: #111827;
+      transition: transform 0.05s ease, box-shadow 0.1s ease, background 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      border: 1px solid #d1d5db;
+    }
+
+    button.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #ffffff;
+    }
+
+    button.danger {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: #ffffff;
+    }
+
+    button.small {
+      padding: 4px 10px;
+      font-size: 0.78rem;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
+      background: #e5e7eb;
+    }
+
+    button.primary:hover {
+      background: #1d4ed8;
+    }
+
+    button.danger:hover {
+      background: #b91c1c;
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      min-width: 500px;
+    }
+
+    thead {
+      background: #f3f4f6;  /* 헤더 연한 회색 */
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    th,
+    td {
+      padding: 6px 8px;
+      text-align: center;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    th {
+      font-weight: 600;
+      color: #4b5563;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(odd) {
+      background: #ffffff;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f9fafb;
+    }
+
+    td.player-name {
+      text-align: left;
+      padding-left: 10px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    td.current-inning-cell {
+      background: #fee2e2;  /* 현재 이닝은 옅은 연분홍 강조 */
+    }
+
+    td input.run-cell {
+      width: 40px;
+      text-align: center;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #111827;
+      font-size: 0.8rem;
+      padding: 3px 4px;
+    }
+
+    td input.run-cell:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+    }
+
+    /* 타자 / 투수 입력칸 */
+    td input.stat-cell,
+    td input.detail-cell,
+    td input.pitcher-input,
+    td input.batter-name-input {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #111827;
+      font-size: 0.8rem;
+      padding: 3px 4px;
+    }
+
+    td input.stat-cell:focus,
+    td input.detail-cell:focus,
+    td input.pitcher-input:focus,
+    td input.batter-name-input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+    }
+
+    .section-title {
+      margin: 16px 2px 4px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #111827;
+      border-left: 4px solid #f97316;  /* KBO 느낌 나는 주황 포인트 */
+      padding-left: 8px;
+    }
+
+    .section-sub {
+      margin: 0 2px 6px;
+      font-size: 0.78rem;
+      color: #6b7280;
+    }
+
+    .footer-info {
+      margin-top: 8px;
+      text-align: right;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+
+    @media (max-width: 600px) {
+      .app {
+        padding: 14px 10px 18px;
+        border-radius: 12px;
+      }
+      h1 { font-size: 1.25rem; }
+      table { font-size: 0.78rem; min-width: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>개인 야구게임 스코어보드</h1>
+    <div class="subtitle">3~6명 개인야구를 KBO 기록실처럼 기록하기 ⚾</div>
+
+    <!-- 팀(선수) 수 + 이닝 수 -->
+    <div class="controls">
+      <div class="field">
+        <label for="playersSelect">팀(선수) 수</label>
+        <select id="playersSelect">
+          <option value="3" selected>3명</option>
+          <option value="4">4명</option>
+          <option value="5">5명</option>
+          <option value="6">6명</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="inningsSelect">이닝 수</label>
+        <select id="inningsSelect">
+          <option value="1">1 이닝</option>
+          <option value="2">2 이닝</option>
+          <option value="3">3 이닝</option>
+          <option value="4">4 이닝</option>
+          <option value="5">5 이닝</option>
+          <option value="6">6 이닝</option>
+          <option value="7">7 이닝</option>
+          <option value="8">8 이닝</option>
+          <option value="9" selected>9 이닝</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 팀(선수) 이름 -->
+    <div id="playerNamesContainer" class="player-names"></div>
+
+    <!-- 현재 이닝 + 점수 버튼 -->
+    <div class="current-inning" id="currentInningLabel">현재 이닝: 1회</div>
+    <div class="buttons-row" id="buttonsRow"></div>
+
+    <!-- 점수 스코어보드 -->
+    <div class="table-wrapper">
+      <table>
+        <thead id="scoreHeader"></thead>
+        <tbody id="scoreBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 타자 기록표 -->
+    <div class="batter-section">
+      <div class="section-title">타자 기록표</div>
+      <div class="section-sub">
+        팀(선수)를 선택하고, 라인업을 A, A1, A2, A3 식으로 적으면 실제 경기 기록지처럼 쓸 수 있어요.
+      </div>
+
+      <div class="controls" style="margin-bottom:6px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+        <div class="field">
+          <label for="batterTeamSelect">기록지 팀(선수) 선택</label>
+          <select id="batterTeamSelect"></select>
+        </div>
+        <div class="field">
+          <label for="lineupSizeSelect">라인업 인원 수</label>
+          <select id="lineupSizeSelect">
+            <option value="4" selected>4명</option>
+            <option value="5">5명</option>
+            <option value="6">6명</option>
+            <option value="7">7명</option>
+            <option value="8">8명</option>
+            <option value="9">9명</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead id="batterTableHead"></thead>
+          <tbody id="batterTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 투수 기록표 -->
+    <div class="pitcher-section">
+      <div class="section-title">투수 기록표</div>
+      <div class="section-sub">
+        팀(선수)별로 투수 기록지를 따로 관리하고, 투수를 계속 추가해서 기록할 수 있어요.
+      </div>
+
+      <div class="controls" style="margin-bottom:6px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+        <div class="field">
+          <label for="pitcherTeamSelect">투수 기록지 팀 선택</label>
+          <select id="pitcherTeamSelect"></select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="addPitcherBtn" class="primary">투수 추가</button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>투수명</th>
+              <th>이닝</th>
+              <th>피안타</th>
+              <th>실점</th>
+              <th>자책</th>
+              <th>4사구</th>
+              <th>삼진</th>
+              <th>피홈런</th>
+              <th>투구수</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="pitcherTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer-info">
+      점수/기록 칸은 전부 직접 수정 가능해요. (실수했을 때 고치기)
+    </div>
+  </div>
+
+  <script>
+    const inningsSelect = document.getElementById("inningsSelect");
+    const playersSelect = document.getElementById("playersSelect");
+    const currentInningLabel = document.getElementById("currentInningLabel");
+    const scoreHeader = document.getElementById("scoreHeader");
+    const scoreBody = document.getElementById("scoreBody");
+    const playerNamesContainer = document.getElementById("playerNamesContainer");
+    const buttonsRow = document.getElementById("buttonsRow");
+
+    const batterTableHead = document.getElementById("batterTableHead");
+    const batterTableBody = document.getElementById("batterTableBody");
+    const batterTeamSelect = document.getElementById("batterTeamSelect");
+    const lineupSizeSelect = document.getElementById("lineupSizeSelect");
+
+    const pitcherTeamSelect = document.getElementById("pitcherTeamSelect");
+    const pitcherTableBody = document.getElementById("pitcherTableBody");
+    const addPitcherBtn = document.getElementById("addPitcherBtn");
+
+    let innings = parseInt(inningsSelect.value, 10);
+    let players = parseInt(playersSelect.value, 10);
+    let currentInning = 1;
+
+    let scores = createEmptyScores(players, innings);
+
+    // 타자 기록용
+    let lineupSize = parseInt(lineupSizeSelect.value, 10);
+    let currentBatterTeam = 0; // 0 ~ players-1
+    // batterStats[teamIndex][lineupIndex] = { name, ab,r,h,rbi,hr,so,sb, inningResults[] }
+    let batterStats = [];
+
+    // 투수 기록용
+    // pitcherStats[teamIndex] = array of pitchers
+    // each pitcher: { name, inn, h, r, er, bb, so, hr, pit }
+    let pitcherStats = [];
+    let currentPitcherTeam = 0;
+
+    function createEmptyScores(p, inn) {
+      return Array.from({ length: p }, () => new Array(inn).fill(0));
+    }
+
+    function createDefaultBatterRow() {
+      return {
+        name: "",
+        ab: 0,
+        r: 0,
+        h: 0,
+        rbi: 0,
+        hr: 0,
+        so: 0,
+        sb: 0,
+        inningResults: new Array(innings).fill("")
+      };
+    }
+
+    function initBatterStatsForTeams() {
+      batterStats = [];
+      for (let t = 0; t < players; t++) {
+        const teamRows = [];
+        for (let i = 0; i < lineupSize; i++) {
+          teamRows.push(createDefaultBatterRow());
+        }
+        batterStats.push(teamRows);
+      }
+    }
+
+    function initPitcherStatsForTeams() {
+      pitcherStats = [];
+      for (let t = 0; t < players; t++) {
+        pitcherStats.push([]); // 처음엔 빈 배열, 필요할 때 추가
+      }
+    }
+
+    function renderHeader() {
+      let html = "<tr>";
+      html += "<th>팀(선수)</th>";
+      for (let i = 1; i <= innings; i++) {
+        html += `<th>${i}</th>`;
+      }
+      html += "<th>합계</th>";
+      html += "</tr>";
+      scoreHeader.innerHTML = html;
+    }
+
+    function getPlayerNames() {
+      const inputs = playerNamesContainer.querySelectorAll(".player-name-input");
+      const arr = [];
+      for (let i = 0; i < players; i++) {
+        const input = Array.from(inputs).find(el => parseInt(el.dataset.player, 10) === i);
+        if (input && input.value.trim() !== "") {
+          arr.push(input.value.trim());
+        } else {
+          arr.push(`팀 ${i + 1}`);
+        }
+      }
+      return arr;
+    }
+
+    function getTotal(teamIndex) {
+      return scores[teamIndex].reduce((sum, v) => sum + (Number(v) || 0), 0);
+    }
+
+    function renderBody() {
+      const teamNames = getPlayerNames();
+      let bodyHtml = "";
+
+      for (let t = 0; t < players; t++) {
+        bodyHtml += "<tr>";
+        bodyHtml += `<td class="player-name">${teamNames[t]}</td>`;
+        for (let i = 0; i < innings; i++) {
+          const isCurrent = (i + 1 === currentInning);
+          const cls = isCurrent ? "current-inning-cell" : "";
+          const value = scores[t][i] ?? 0;
+          bodyHtml += `<td class="${cls}">
+            <input class="run-cell" type="number" min="0" data-team="${t}" data-inning="${i}" value="${value}">
+          </td>`;
+        }
+        bodyHtml += `<td>${getTotal(t)}</td>`;
+        bodyHtml += "</tr>";
+      }
+
+      scoreBody.innerHTML = bodyHtml;
+
+      const inputs = scoreBody.querySelectorAll("input.run-cell");
+      inputs.forEach(input => {
+        input.addEventListener("input", (e) => {
+          const tm = parseInt(e.target.dataset.team, 10);
+          const inn = parseInt(e.target.dataset.inning, 10);
+          const val = parseInt(e.target.value, 10);
+          scores[tm][inn] = isNaN(val) ? 0 : val;
+          renderBody(); // 합계 갱신
+        });
+      });
+    }
+
+    function updateCurrentInningLabel() {
+      currentInningLabel.textContent = `현재 이닝: ${currentInning}회`;
+    }
+
+    function renderPlayerNameInputs() {
+      let html = "";
+      for (let i = 0; i < players; i++) {
+        html += `
+          <div class="field">
+            <label>팀(선수) ${i + 1} 이름</label>
+            <input
+              type="text"
+              class="player-name-input"
+              data-player="${i}"
+              value="팀 ${i + 1}"
+            />
+          </div>
+        `;
+      }
+      playerNamesContainer.innerHTML = html;
+
+      const nameInputs = playerNamesContainer.querySelectorAll(".player-name-input");
+      nameInputs.forEach(input => {
+        input.addEventListener("input", () => {
+          renderBody();
+          renderButtons();
+          renderBatterTeamSelect();
+          renderBatterTable();
+          renderPitcherTeamSelect();
+          renderPitcherTable();
+        });
+      });
+    }
+
+    function renderButtons() {
+      const teamNames = getPlayerNames();
+      let html = "";
+
+      for (let i = 0; i < players; i++) {
+        const label = (teamNames[i] || `팀 ${i + 1}`) + " +1점";
+        html += `<button class="primary team-btn" data-team="${i}">${label}</button>`;
+      }
+      html += `<button id="nextInning">다음 이닝</button>`;
+      html += `<button class="danger" id="resetGame">전체 초기화</button>`;
+
+      buttonsRow.innerHTML = html;
+
+      const teamButtons = buttonsRow.querySelectorAll(".team-btn");
+      teamButtons.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const tm = parseInt(e.target.dataset.team, 10);
+          if (currentInning > innings) return;
+          scores[tm][currentInning - 1] += 1;
+          renderBody();
+        });
+      });
+
+      const nextInningBtn = document.getElementById("nextInning");
+      nextInningBtn.addEventListener("click", () => {
+        if (currentInning < innings) {
+          currentInning += 1;
+          updateCurrentInningLabel();
+          renderBody();
+        } else {
+          alert("마지막 이닝입니다! 😄");
+        }
+      });
+
+      const resetGameBtn = document.getElementById("resetGame");
+      resetGameBtn.addEventListener("click", () => {
+        if (confirm("모든 점수를 초기화할까요?")) {
+          scores = createEmptyScores(players, innings);
+          initBatterStatsForTeams();
+          initPitcherStatsForTeams();
+          currentInning = 1;
+          updateCurrentInningLabel();
+          renderHeader();
+          renderBody();
+          renderButtons();
+          renderBatterTeamSelect();
+          renderBatterTable();
+          renderPitcherTeamSelect();
+          renderPitcherTable();
+        }
+      });
+    }
+
+    /* ---- 타자 기록표 ---- */
+
+    function renderBatterTeamSelect() {
+      const teamNames = getPlayerNames();
+      let opts = "";
+      for (let t = 0; t < players; t++) {
+        const name = teamNames[t] || `팀 ${t + 1}`;
+        const sel = t === currentBatterTeam ? "selected" : "";
+        opts += `<option value="${t}" ${sel}>${name}</option>`;
+      }
+      batterTeamSelect.innerHTML = opts;
+    }
+
+    function renderBatterHeader() {
+      let h = "<tr>";
+      h += "<th>타순</th>";
+      h += "<th>타자명</th>";
+      h += "<th>타수</th>";
+      h += "<th>득점</th>";
+      h += "<th>안타</th>";
+      h += "<th>타점</th>";
+      h += "<th>홈런</th>";
+      h += "<th>삼진</th>";
+      h += "<th>도루</th>";
+      for (let i = 1; i <= innings; i++) {
+        h += `<th>${i}</th>`;
+      }
+      h += "</tr>";
+      batterTableHead.innerHTML = h;
+    }
+
+    function renderBatterTable() {
+      renderBatterHeader();
+      if (!batterStats[currentBatterTeam]) return;
+
+      const teamNames = getPlayerNames();
+      const teamName = teamNames[currentBatterTeam] || `팀 ${currentBatterTeam + 1}`;
+      const rows = batterStats[currentBatterTeam];
+      let body = "";
+
+      for (let i = 0; i < lineupSize; i++) {
+        const row = rows[i] || createDefaultBatterRow();
+        rows[i] = row; // ensure exists
+
+        let name = row.name;
+        if (!name) {
+          if (i === 0) name = teamName;
+          else name = teamName + i;
+        }
+
+        body += "<tr>";
+        body += `<td>${i + 1}</td>`;
+        body += `<td><input type="text" class="batter-name-input" data-index="${i}" value="${name}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="ab" value="${row.ab ?? 0}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="r" value="${row.r ?? 0}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="h" value="${row.h ?? 0}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="rbi" value="${row.rbi ?? 0}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="hr" value="${row.hr ?? 0}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="so" value="${row.so ?? 0}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="sb" value="${row.sb ?? 0}"></td>`;
+
+        for (let inn = 0; inn < innings; inn++) {
+          const val = row.inningResults[inn] || "";
+          body += `<td><input type="text" class="detail-cell" data-index="${i}" data-inning="${inn}" value="${val}"></td>`;
+        }
+
+        body += "</tr>";
+      }
+
+      batterTableBody.innerHTML = body;
+
+      const nameInputs = batterTableBody.querySelectorAll("input.batter-name-input");
+      nameInputs.forEach(inp => {
+        inp.addEventListener("input", (e) => {
+          const idx = parseInt(e.target.dataset.index, 10);
+          batterStats[currentBatterTeam][idx].name = e.target.value;
+        });
+      });
+
+      const statInputs = batterTableBody.querySelectorAll("input.stat-cell");
+      statInputs.forEach(inp => {
+        inp.addEventListener("input", (e) => {
+          const idx = parseInt(e.target.dataset.index, 10);
+          const field = e.target.dataset.field;
+          const val = parseInt(e.target.value, 10);
+          batterStats[currentBatterTeam][idx][field] = isNaN(val) ? 0 : val;
+        });
+      });
+
+      const detailInputs = batterTableBody.querySelectorAll("input.detail-cell");
+      detailInputs.forEach(inp => {
+        inp.addEventListener("input", (e) => {
+          const idx = parseInt(e.target.dataset.index, 10);
+          const inn = parseInt(e.target.dataset.inning, 10);
+          batterStats[currentBatterTeam][idx].inningResults[inn] = e.target.value;
+        });
+      });
+    }
+
+    function resizeLineup(newSize) {
+      lineupSize = newSize;
+      for (let t = 0; t < players; t++) {
+        const rows = batterStats[t] || [];
+        if (rows.length < newSize) {
+          for (let i = rows.length; i < newSize; i++) {
+            rows.push(createDefaultBatterRow());
+          }
+        } else if (rows.length > newSize) {
+          rows.length = newSize;
+        }
+        batterStats[t] = rows;
+      }
+      renderBatterTable();
+    }
+
+    function resetForInningChange() {
+      scores = createEmptyScores(players, innings);
+      // 이닝 수 바뀌면 타자 기록의 이닝별 칸도 길이 조정
+      for (let t = 0; t < players; t++) {
+        const rows = batterStats[t] || [];
+        rows.forEach(row => {
+          const oldArr = row.inningResults || [];
+          const newArr = new Array(innings).fill("");
+          const minLen = Math.min(oldArr.length, newArr.length);
+          for (let i = 0; i < minLen; i++) newArr[i] = oldArr[i];
+          row.inningResults = newArr;
+        });
+        batterStats[t] = rows;
+      }
+      currentInning = 1;
+      updateCurrentInningLabel();
+      renderHeader();
+      renderBody();
+      renderButtons();
+      renderBatterTable();
+    }
+
+    /* ---- 투수 기록표 ---- */
+
+    function renderPitcherTeamSelect() {
+      const teamNames = getPlayerNames();
+      let opts = "";
+      for (let t = 0; t < players; t++) {
+        const name = teamNames[t] || `팀 ${t + 1}`;
+        const sel = t === currentPitcherTeam ? "selected" : "";
+        opts += `<option value="${t}" ${sel}>${name}</option>`;
+      }
+      pitcherTeamSelect.innerHTML = opts;
+    }
+
+    function renderPitcherTable() {
+      const team = currentPitcherTeam;
+      const rows = pitcherStats[team] || [];
+      let html = "";
+
+      rows.forEach((p, idx) => {
+        html += `
+          <tr>
+            <td><input class="pitcher-input" data-idx="${idx}" data-field="name" value="${p.name}" /></td>
+            <td><input class="pitcher-input" data-idx="${idx}" data-field="inn" value="${p.inn}" /></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="h" value="${p.h}" /></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="r" value="${p.r}" /></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="er" value="${p.er}" /></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="bb" value="${p.bb}" /></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="so" value="${p.so}" /></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="hr" value="${p.hr}" /></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="pit" value="${p.pit}" /></td>
+            <td><button class="danger small delPitcherBtn" data-idx="${idx}">삭제</button></td>
+          </tr>
+        `;
+      });
+
+      pitcherTableBody.innerHTML = html;
+
+      pitcherTableBody.querySelectorAll(".pitcher-input").forEach(inp => {
+        inp.addEventListener("input", (e) => {
+          const idx = parseInt(e.target.dataset.idx, 10);
+          const field = e.target.dataset.field;
+          const value = e.target.type === "number"
+            ? (isNaN(parseInt(e.target.value, 10)) ? 0 : parseInt(e.target.value, 10))
+            : e.target.value;
+          pitcherStats[team][idx][field] = value;
+        });
+      });
+
+      pitcherTableBody.querySelectorAll(".delPitcherBtn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const idx = parseInt(e.target.dataset.idx, 10);
+          pitcherStats[team].splice(idx, 1);
+          renderPitcherTable();
+        });
+      });
+    }
+
+    addPitcherBtn.addEventListener("click", () => {
+      pitcherStats[currentPitcherTeam].push({
+        name: "",
+        inn: "",
+        h: 0,
+        r: 0,
+        er: 0,
+        bb: 0,
+        so: 0,
+        hr: 0,
+        pit: 0
+      });
+      renderPitcherTable();
+    });
+
+    pitcherTeamSelect.addEventListener("change", () => {
+      currentPitcherTeam = parseInt(pitcherTeamSelect.value, 10);
+      renderPitcherTable();
+    });
+
+    /* --- 이벤트 설정 --- */
+
+    inningsSelect.addEventListener("change", () => {
+      innings = parseInt(inningsSelect.value, 10);
+      resetForInningChange();
+    });
+
+    playersSelect.addEventListener("change", () => {
+      players = parseInt(playersSelect.value, 10);
+      scores = createEmptyScores(players, innings);
+      currentInning = 1;
+      updateCurrentInningLabel();
+      renderHeader();
+      renderPlayerNameInputs();
+      renderBody();
+      initBatterStatsForTeams();
+      initPitcherStatsForTeams();
+      currentBatterTeam = 0;
+      currentPitcherTeam = 0;
+      renderButtons();
+      renderBatterTeamSelect();
+      renderBatterTable();
+      renderPitcherTeamSelect();
+      renderPitcherTable();
+    });
+
+    batterTeamSelect.addEventListener("change", () => {
+      currentBatterTeam = parseInt(batterTeamSelect.value, 10);
+      renderBatterTable();
+    });
+
+    lineupSizeSelect.addEventListener("change", () => {
+      const newSize = parseInt(lineupSizeSelect.value, 10);
+      resizeLineup(newSize);
+    });
+
+    // 초기 렌더링
+    renderHeader();
+    renderPlayerNameInputs();
+    renderBody();
+    initBatterStatsForTeams();
+    initPitcherStatsForTeams();
+    renderButtons();
+    renderBatterTeamSelect();
+    renderBatterTable();
+    renderPitcherTeamSelect();
+    renderPitcherTable();
+    updateCurrentInningLabel();
+  </script>
+</body>
+</html>
