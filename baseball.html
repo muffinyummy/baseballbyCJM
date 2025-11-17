@@ -10,8 +10,8 @@
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #e5e7eb;          /* 연한 회색 배경 */
-      color: #111827;               /* 진한 회색 텍스트 */
+      background: #e5e7eb;
+      color: #111827;
       display: flex;
       justify-content: center;
       align-items: flex-start;
@@ -22,11 +22,11 @@
     .app {
       width: 100%;
       max-width: 1100px;
-      background: #ffffff;          /* 하얀 카드 */
+      background: #ffffff;
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
       padding: 20px 18px 24px;
-      border: 1px solid #d1d5db;    /* 옅은 회색 테두리 */
+      border: 1px solid #d1d5db;
     }
 
     h1 {
@@ -90,7 +90,7 @@
       margin: 4px 0 10px;
       font-size: 0.9rem;
       text-align: center;
-      color: #b45309; /* 살짝 주황 톤 */
+      color: #b45309;
       font-weight: 600;
     }
 
@@ -170,7 +170,7 @@
     }
 
     thead {
-      background: #f3f4f6;  /* 헤더 연한 회색 */
+      background: #f3f4f6;
       border-bottom: 2px solid #e5e7eb;
     }
 
@@ -203,7 +203,7 @@
     }
 
     td.current-inning-cell {
-      background: #fee2e2;  /* 현재 이닝은 옅은 연분홍 강조 */
+      background: #fee2e2;
     }
 
     td input.run-cell {
@@ -223,7 +223,6 @@
       box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
     }
 
-    /* 타자 / 투수 입력칸 */
     td input.stat-cell,
     td input.detail-cell,
     td input.pitcher-input,
@@ -251,7 +250,7 @@
       font-size: 1rem;
       font-weight: 700;
       color: #111827;
-      border-left: 4px solid #f97316;  /* KBO 느낌 나는 주황 포인트 */
+      border-left: 4px solid #f97316;
       padding-left: 8px;
     }
 
@@ -259,6 +258,11 @@
       margin: 0 2px 6px;
       font-size: 0.78rem;
       color: #6b7280;
+    }
+
+    .team-total-row {
+      background: #e5e7eb !important;
+      font-weight: 700;
     }
 
     .footer-info {
@@ -330,6 +334,7 @@
       <div class="section-title">타자 기록표</div>
       <div class="section-sub">
         팀(선수)를 선택하고, 라인업을 A, A1, A2, A3 식으로 적으면 실제 경기 기록지처럼 쓸 수 있어요.
+        루타(TB)는 1루타=1, 2루타=2, 3루타=3, 홈런=4 합으로 적으면 SLG/OPS가 자동 계산됩니다.
       </div>
 
       <div class="controls" style="margin-bottom:6px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
@@ -397,8 +402,22 @@
       </div>
     </div>
 
+    <!-- 저장/불러오기 버튼 (브라우저 localStorage) -->
+    <div class="buttons-row" style="justify-content: flex-end; margin-top: 4px; gap: 6px;">
+      <button id="saveGameBtn">현재 기록 저장(브라우저)</button>
+      <button id="loadGameBtn">브라우저에서 불러오기</button>
+    </div>
+
+    <!-- JSON 파일 내보내기 / 불러오기 -->
+    <div class="buttons-row" style="justify-content: flex-end; margin-top: 4px; gap: 6px;">
+      <button id="exportJsonBtn">JSON 파일로 내보내기</button>
+      <button id="importJsonBtn">JSON 파일에서 불러오기</button>
+      <input type="file" id="importJsonInput" accept="application/json" style="display:none;" />
+    </div>
+
     <div class="footer-info">
-      점수/기록 칸은 전부 직접 수정 가능해요. (실수했을 때 고치기)
+      점수/기록 칸은 전부 직접 수정 가능해요. (실수했을 때 고치기) ·
+      저장 기능은 이 브라우저 또는 JSON 파일로 관리됩니다.
     </div>
   </div>
 
@@ -420,6 +439,13 @@
     const pitcherTableBody = document.getElementById("pitcherTableBody");
     const addPitcherBtn = document.getElementById("addPitcherBtn");
 
+    const saveGameBtn = document.getElementById("saveGameBtn");
+    const loadGameBtn = document.getElementById("loadGameBtn");
+
+    const exportJsonBtn = document.getElementById("exportJsonBtn");
+    const importJsonBtn = document.getElementById("importJsonBtn");
+    const importJsonInput = document.getElementById("importJsonInput");
+
     let innings = parseInt(inningsSelect.value, 10);
     let players = parseInt(playersSelect.value, 10);
     let currentInning = 1;
@@ -429,7 +455,7 @@
     // 타자 기록용
     let lineupSize = parseInt(lineupSizeSelect.value, 10);
     let currentBatterTeam = 0; // 0 ~ players-1
-    // batterStats[teamIndex][lineupIndex] = { name, ab,r,h,rbi,hr,so,sb, inningResults[] }
+    // batterStats[teamIndex][lineupIndex] = { name, ab,r,h,rbi,hr,so,sb,bb,tb, inningResults[] }
     let batterStats = [];
 
     // 투수 기록용
@@ -437,6 +463,8 @@
     // each pitcher: { name, inn, h, r, er, bb, so, hr, pit }
     let pitcherStats = [];
     let currentPitcherTeam = 0;
+
+    const STORAGE_KEY = "personalBaseballScoreboardState";
 
     function createEmptyScores(p, inn) {
       return Array.from({ length: p }, () => new Array(inn).fill(0));
@@ -452,6 +480,8 @@
         hr: 0,
         so: 0,
         sb: 0,
+        bb: 0,
+        tb: 0,
         inningResults: new Array(innings).fill("")
       };
     }
@@ -470,7 +500,7 @@
     function initPitcherStatsForTeams() {
       pitcherStats = [];
       for (let t = 0; t < players; t++) {
-        pitcherStats.push([]); // 처음엔 빈 배열, 필요할 때 추가
+        pitcherStats.push([]);
       }
     }
 
@@ -531,7 +561,7 @@
           const inn = parseInt(e.target.dataset.inning, 10);
           const val = parseInt(e.target.value, 10);
           scores[tm][inn] = isNaN(val) ? 0 : val;
-          renderBody(); // 합계 갱신
+          renderBody();
         });
       });
     }
@@ -647,11 +677,50 @@
       h += "<th>홈런</th>";
       h += "<th>삼진</th>";
       h += "<th>도루</th>";
+      h += "<th>볼넷</th>";
+      h += "<th>루타</th>";
+      h += "<th>타율</th>";
+      h += "<th>출루율</th>";
+      h += "<th>장타율</th>";
+      h += "<th>OPS</th>";
       for (let i = 1; i <= innings; i++) {
         h += `<th>${i}</th>`;
       }
       h += "</tr>";
       batterTableHead.innerHTML = h;
+    }
+
+    function computeRates(ab, h, bb, tb) {
+      ab = Number(ab) || 0;
+      h  = Number(h)  || 0;
+      bb = Number(bb) || 0;
+      tb = Number(tb) || 0;
+
+      let avgStr = "-";
+      let obpStr = "-";
+      let slgStr = "-";
+      let opsStr = "-";
+
+      let avgNum = null;
+      let obpNum = null;
+      let slgNum = null;
+
+      if (ab > 0) {
+        avgNum = h / ab;
+        slgNum = tb / ab;
+      }
+      if (ab + bb > 0) {
+        obpNum = (h + bb) / (ab + bb);
+      }
+
+      if (avgNum !== null) avgStr = avgNum.toFixed(3);
+      if (obpNum !== null) obpStr = obpNum.toFixed(3);
+      if (slgNum !== null) slgStr = slgNum.toFixed(3);
+      if (obpNum !== null && slgNum !== null) {
+        opsStr = (obpNum + slgNum).toFixed(3);
+      }
+
+      return { avgStr, obpStr, slgStr, opsStr };
     }
 
     function renderBatterTable() {
@@ -663,15 +732,42 @@
       const rows = batterStats[currentBatterTeam];
       let body = "";
 
+      // 팀 합계를 위해 누적값
+      let totalAB = 0, totalR = 0, totalH = 0, totalRBI = 0, totalHR = 0,
+          totalSO = 0, totalSB = 0, totalBB = 0, totalTB = 0;
+
       for (let i = 0; i < lineupSize; i++) {
         const row = rows[i] || createDefaultBatterRow();
-        rows[i] = row; // ensure exists
+        rows[i] = row;
 
         let name = row.name;
         if (!name) {
           if (i === 0) name = teamName;
           else name = teamName + i;
         }
+
+        const ab = Number(row.ab) || 0;
+        const r  = Number(row.r)  || 0;
+        const h  = Number(row.h)  || 0;
+        const rbi= Number(row.rbi)|| 0;
+        const hr = Number(row.hr) || 0;
+        const so = Number(row.so) || 0;
+        const sb = Number(row.sb) || 0;
+        const bb = Number(row.bb) || 0;
+        const tb = Number(row.tb) || 0;
+
+        // 개인 기록 누적
+        totalAB  += ab;
+        totalR   += r;
+        totalH   += h;
+        totalRBI += rbi;
+        totalHR  += hr;
+        totalSO  += so;
+        totalSB  += sb;
+        totalBB  += bb;
+        totalTB  += tb;
+
+        const { avgStr, obpStr, slgStr, opsStr } = computeRates(ab, h, bb, tb);
 
         body += "<tr>";
         body += `<td>${i + 1}</td>`;
@@ -683,6 +779,12 @@
         body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="hr" value="${row.hr ?? 0}"></td>`;
         body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="so" value="${row.so ?? 0}"></td>`;
         body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="sb" value="${row.sb ?? 0}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="bb" value="${row.bb ?? 0}"></td>`;
+        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="tb" value="${row.tb ?? 0}"></td>`;
+        body += `<td>${avgStr}</td>`;
+        body += `<td>${obpStr}</td>`;
+        body += `<td>${slgStr}</td>`;
+        body += `<td>${opsStr}</td>`;
 
         for (let inn = 0; inn < innings; inn++) {
           const val = row.inningResults[inn] || "";
@@ -691,6 +793,29 @@
 
         body += "</tr>";
       }
+
+      // 팀 합계 행
+      const teamRates = computeRates(totalAB, totalH, totalBB, totalTB);
+      body += `<tr class="team-total-row">`;
+      body += `<td colspan="2">팀 합계</td>`;
+      body += `<td>${totalAB}</td>`;
+      body += `<td>${totalR}</td>`;
+      body += `<td>${totalH}</td>`;
+      body += `<td>${totalRBI}</td>`;
+      body += `<td>${totalHR}</td>`;
+      body += `<td>${totalSO}</td>`;
+      body += `<td>${totalSB}</td>`;
+      body += `<td>${totalBB}</td>`;
+      body += `<td>${totalTB}</td>`;
+      body += `<td>${teamRates.avgStr}</td>`;
+      body += `<td>${teamRates.obpStr}</td>`;
+      body += `<td>${teamRates.slgStr}</td>`;
+      body += `<td>${teamRates.opsStr}</td>`;
+      // 이닝별 칸은 비워두거나 "-"로 둘 수 있음
+      for (let inn = 0; inn < innings; inn++) {
+        body += `<td>-</td>`;
+      }
+      body += `</tr>`;
 
       batterTableBody.innerHTML = body;
 
@@ -709,6 +834,7 @@
           const field = e.target.dataset.field;
           const val = parseInt(e.target.value, 10);
           batterStats[currentBatterTeam][idx][field] = isNaN(val) ? 0 : val;
+          renderBatterTable(); // 스탯 바뀌면 타율/팀합계 재계산
         });
       });
 
@@ -740,7 +866,6 @@
 
     function resetForInningChange() {
       scores = createEmptyScores(players, innings);
-      // 이닝 수 바뀌면 타자 기록의 이닝별 칸도 길이 조정
       for (let t = 0; t < players; t++) {
         const rows = batterStats[t] || [];
         rows.forEach(row => {
@@ -837,7 +962,138 @@
       renderPitcherTable();
     });
 
-    /* --- 이벤트 설정 --- */
+    /* ---- 저장 / 불러오기 (localStorage) ---- */
+
+    function saveGame() {
+      const state = {
+        innings,
+        players,
+        currentInning,
+        lineupSize,
+        scores,
+        batterStats,
+        pitcherStats,
+        playerNames: getPlayerNames(),
+        currentBatterTeam,
+        currentPitcherTeam
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        alert("현재 기록을 저장했어요! (이 브라우저에 저장됩니다)");
+      } catch (e) {
+        alert("저장 중 오류가 발생했어요. 브라우저 저장 설정을 확인해 주세요.");
+      }
+    }
+
+    function applyLoadedState(state) {
+      innings = state.innings || innings;
+      players = state.players || players;
+      currentInning = state.currentInning || 1;
+      lineupSize = state.lineupSize || lineupSize;
+      scores = state.scores || createEmptyScores(players, innings);
+      batterStats = state.batterStats || [];
+      pitcherStats = state.pitcherStats || [];
+      const savedNames = state.playerNames || [];
+      currentBatterTeam = Math.min(state.currentBatterTeam ?? 0, players - 1);
+      currentPitcherTeam = Math.min(state.currentPitcherTeam ?? 0, players - 1);
+
+      inningsSelect.value = String(innings);
+      playersSelect.value = String(players);
+      lineupSizeSelect.value = String(lineupSize);
+
+      renderHeader();
+      renderPlayerNameInputs();
+
+      const nameInputs = playerNamesContainer.querySelectorAll(".player-name-input");
+      savedNames.forEach((nm, i) => {
+        const inp = Array.from(nameInputs).find(el => parseInt(el.dataset.player, 10) === i);
+        if (inp && nm) inp.value = nm;
+      });
+
+      renderBody();
+      renderButtons();
+      renderBatterTeamSelect();
+      renderBatterTable();
+      renderPitcherTeamSelect();
+      renderPitcherTable();
+      updateCurrentInningLabel();
+    }
+
+    function loadGame() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        alert("저장된 기록이 없어요.");
+        return;
+      }
+      let state;
+      try {
+        state = JSON.parse(raw);
+      } catch (e) {
+        alert("저장된 데이터가 손상되었어요. 다시 저장해 주세요.");
+        return;
+      }
+      applyLoadedState(state);
+      alert("저장된 기록을 불러왔어요!");
+    }
+
+    saveGameBtn.addEventListener("click", saveGame);
+    loadGameBtn.addEventListener("click", loadGame);
+
+    /* ---- JSON 파일 내보내기 / 불러오기 ---- */
+
+    exportJsonBtn.addEventListener("click", () => {
+      const state = {
+        innings,
+        players,
+        currentInning,
+        lineupSize,
+        scores,
+        batterStats,
+        pitcherStats,
+        playerNames: getPlayerNames(),
+        currentBatterTeam,
+        currentPitcherTeam
+      };
+
+      const json = JSON.stringify(state, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+
+      const now = new Date();
+      const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      a.download = `scoreboard-${stamp}.json`;
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    importJsonBtn.addEventListener("click", () => {
+      importJsonInput.value = "";
+      importJsonInput.click();
+    });
+
+    importJsonInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const state = JSON.parse(reader.result);
+          applyLoadedState(state);
+          alert("JSON 파일에서 기록을 불러왔어요!");
+        } catch (err) {
+          alert("JSON 파일을 읽는 중 오류가 발생했어요.");
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    });
+
+    /* --- 기타 이벤트 설정 --- */
 
     inningsSelect.addEventListener("change", () => {
       innings = parseInt(inningsSelect.value, 10);
