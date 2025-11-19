@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>야구 게임 개인 스코어보드 (ERA & WHIP 포함)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
     * { box-sizing: border-box; }
 
@@ -39,7 +40,9 @@
     .field input:focus, .field select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 1px rgba(37,99,235,0.2); }
 
     .player-names { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 8px; }
+
     .current-inning { margin: 4px 0 10px; font-size: 0.9rem; text-align: center; color: #b45309; font-weight: 600; }
+
     .buttons-row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:14px; }
 
     button { border:none; border-radius:999px; padding:8px 14px; font-size:0.85rem; cursor:pointer; background:#f3f4f6; color:#111827; transition: transform .05s, box-shadow .1s, background .1s; display:inline-flex; align-items:center; gap:4px; border:1px solid #d1d5db; }
@@ -55,7 +58,8 @@
     thead { background:#f3f4f6; border-bottom:2px solid #e5e7eb; }
     th, td { padding:6px 8px; text-align:center; border-bottom:1px solid #e5e7eb; }
     th { font-weight:600; color:#4b5563; white-space:nowrap; }
-    tbody tr:nth-child(odd) { background:#ffffff; } tbody tr:nth-child(even) { background:#f9fafb; }
+    tbody tr:nth-child(odd) { background:#ffffff; }
+    tbody tr:nth-child(even) { background:#f9fafb; }
 
     td.player-name { text-align:left; padding-left:10px; font-weight:600; color:#111827; }
     td.current-inning-cell { background:#fee2e2; }
@@ -70,15 +74,15 @@
     .section-sub { margin:0 2px 6px; font-size:0.78rem; color:#6b7280; }
 
     .team-total-row { background: #e5e7eb !important; font-weight:700; }
-    .footer-info { margin-top:8px; text-align:right; font-size:0.75rem; color:#9ca3af; }
 
-    @media (max-width:600px) { .app { padding:14px 10px 18px; border-radius:12px; } h1 { font-size:1.25rem; } table { font-size:0.78rem; min-width:420px; } }
+    .footer-info { margin-top:8px; text-align:right; font-size:0.75rem; color:#9ca3af; }
   </style>
 </head>
+
 <body>
   <div class="app">
-    <h1>개인 야구게임 스코어보드</h1>
-    <div class="subtitle">투수 ERA / WHIP 자동계산 포함 ⚾</div>
+
+    <h1>스코어보드</h1>
 
     <div class="controls">
       <div class="field">
@@ -90,6 +94,7 @@
           <option value="6">6명</option>
         </select>
       </div>
+
       <div class="field">
         <label for="inningsSelect">이닝 수</label>
         <select id="inningsSelect">
@@ -118,11 +123,10 @@
       </table>
     </div>
 
+    <!-- 타자 기록 -->
     <div class="batter-section">
       <div class="section-title">타자 기록표</div>
-      <div class="section-sub">
-        AB/H/BB/TB 기반으로 AVG / OBP / SLG / OPS 자동 계산
-      </div>
+
       <div class="controls" style="margin-bottom:6px;">
         <div class="field">
           <label for="batterTeamSelect">기록지 팀(선수) 선택</label>
@@ -140,6 +144,7 @@
           </select>
         </div>
       </div>
+
       <div class="table-wrapper">
         <table>
           <thead id="batterTableHead"></thead>
@@ -148,11 +153,9 @@
       </div>
     </div>
 
+    <!-- 투수 기록 -->
     <div class="pitcher-section">
-      <div class="section-title">투수 기록표 (ERA / WHIP 자동계산)</div>
-      <div class="section-sub">
-        이닝 표기: 5.1 = 5와 1아웃(=5⅓), 5.2 = 5와 2아웃(=5⅔). ERA = (자책점*9)/IP, WHIP = (피안타+볼넷)/IP
-      </div>
+      <div class="section-title">투수 기록표</div>
 
       <div class="controls" style="margin-bottom:6px;">
         <div class="field">
@@ -188,6 +191,7 @@
       </div>
     </div>
 
+    <!-- 저장/불러오기 -->
     <div class="buttons-row" style="justify-content:flex-end; margin-top:4px; gap:6px;">
       <button id="saveGameBtn">현재 기록 저장(브라우저)</button>
       <button id="loadGameBtn">브라우저에서 불러오기</button>
@@ -200,10 +204,10 @@
     </div>
 
     <div class="footer-info">점수/기록 칸은 전부 직접 수정 가능. 저장은 브라우저/JSON 파일.</div>
+
   </div>
 
   <script>
-    // DOM
     const inningsSelect = document.getElementById("inningsSelect");
     const playersSelect = document.getElementById("playersSelect");
     const currentInningLabel = document.getElementById("currentInningLabel");
@@ -227,7 +231,6 @@
     const importJsonBtn = document.getElementById("importJsonBtn");
     const importJsonInput = document.getElementById("importJsonInput");
 
-    // state
     let innings = parseInt(inningsSelect.value, 10);
     let players = parseInt(playersSelect.value, 10);
     let currentInning = 1;
@@ -240,6 +243,8 @@
     let pitcherStats = [];
     let currentPitcherTeam = 0;
 
+    let playerNames = Array(players).fill("");
+
     const STORAGE_KEY = "personalBaseballScoreboardState_v2";
 
     function createEmptyScores(p, inn) {
@@ -247,402 +252,418 @@
     }
 
     function createDefaultBatterRow() {
-      return { name: "", ab:0, r:0, h:0, rbi:0, hr:0, so:0, sb:0, bb:0, tb:0, inningResults: new Array(innings).fill("") };
+      return {
+        name: "",
+        ab: 0, r: 0, h: 0, rbi: 0,
+        hr: 0, so: 0, sb: 0, bb: 0, tb: 0,
+        inningResults: new Array(innings).fill("")
+      };
     }
 
     function initBatterStatsForTeams() {
       batterStats = [];
-      for (let t=0; t<players; t++) {
+      for (let t = 0; t < players; t++) {
         const rows = [];
-        for (let i=0;i<lineupSize;i++) rows.push(createDefaultBatterRow());
+        for (let i = 0; i < lineupSize; i++) rows.push(createDefaultBatterRow());
         batterStats.push(rows);
       }
     }
 
     function initPitcherStatsForTeams() {
       pitcherStats = [];
-      for (let t=0; t<players; t++) pitcherStats.push([]);
+      for (let t = 0; t < players; t++) pitcherStats.push([]);
     }
 
-    /** ---------------- SCOREBOARD ---------------- */
     function renderHeader() {
       let html = "<tr><th>팀(선수)</th>";
-      for (let i=1;i<=innings;i++) html += `<th>${i}</th>`;
+      for (let i = 1; i <= innings; i++) html += `<th>${i}</th>`;
       html += "<th>합계</th></tr>";
       scoreHeader.innerHTML = html;
     }
 
     function getPlayerNames() {
-      const inputs = playerNamesContainer.querySelectorAll(".player-name-input");
-      const arr = [];
-      for (let i=0;i<players;i++){
-        const input = Array.from(inputs).find(el => parseInt(el.dataset.player,10)===i);
-        arr.push(input && input.value.trim() ? input.value.trim() : `팀 ${i+1}`);
-      }
-      return arr;
+      return playerNames.map((v, i) => v.trim() ? v.trim() : `팀 ${i + 1}`);
     }
 
     function getTotal(teamIndex) {
-      return scores[teamIndex].reduce((s,v)=> s + (Number(v)||0), 0);
+      return scores[teamIndex].reduce((s, v) => s + (Number(v) || 0), 0);
+    }
+
+    function renderPlayerNameInputs() {
+      let html = "";
+      for (let i = 0; i < players; i++) {
+        const nm = playerNames[i] || `팀 ${i + 1}`;
+        html += `
+          <div class="field">
+            <label>팀(선수) ${i + 1} 이름</label>
+            <input type="text" class="player-name-input" data-player="${i}" value="${nm}">
+          </div>`;
+      }
+      playerNamesContainer.innerHTML = html;
+
+      playerNamesContainer.querySelectorAll(".player-name-input")
+        .forEach(inp => {
+          inp.addEventListener("input", (e) => {
+            const idx = parseInt(e.target.dataset.player, 10);
+            playerNames[idx] = e.target.value;
+            renderButtons();
+            renderBatterTeamSelect();
+            renderPitcherTeamSelect();
+          });
+        });
     }
 
     function renderBody() {
-      const teamNames = getPlayerNames();
+      const names = getPlayerNames();
       let bodyHtml = "";
-      for (let t=0;t<players;t++){
+
+      for (let t = 0; t < players; t++) {
         bodyHtml += "<tr>";
-        bodyHtml += `<td class="player-name">${teamNames[t]}</td>`;
-        for (let i=0;i<innings;i++){
-          const isCurrent = (i+1===currentInning);
+        bodyHtml += `<td class="player-name">${names[t]}</td>`;
+
+        for (let i = 0; i < innings; i++) {
+          const isCurrent = (i + 1 === currentInning);
           const cls = isCurrent ? "current-inning-cell" : "";
           const value = scores[t][i] ?? 0;
-          bodyHtml += `<td class="${cls}"><input class="run-cell" type="number" min="0" data-team="${t}" data-inning="${i}" value="${value}"></td>`;
+          bodyHtml += `
+            <td class="${cls}">
+              <input class="run-cell" type="number" min="0"
+                     data-team="${t}" data-inning="${i}"
+                     value="${value}">
+            </td>`;
         }
-        bodyHtml += `<td>${getTotal(t)}</td>`;
-        bodyHtml += "</tr>";
+
+        bodyHtml += `<td>${getTotal(t)}</td></tr>`;
       }
+
       scoreBody.innerHTML = bodyHtml;
 
-      const inputs = scoreBody.querySelectorAll("input.run-cell");
-      inputs.forEach(input=>{
-        input.addEventListener("input", (e)=>{
-          const tm = parseInt(e.target.dataset.team,10);
-          const inn = parseInt(e.target.dataset.inning,10);
-          const val = parseInt(e.target.value,10);
+      scoreBody.querySelectorAll("input.run-cell").forEach(input => {
+        input.addEventListener("change", e => {
+          const tm = parseInt(e.target.dataset.team, 10);
+          const inn = parseInt(e.target.dataset.inning, 10);
+          const val = parseInt(e.target.value, 10);
           scores[tm][inn] = isNaN(val) ? 0 : val;
           renderBody();
         });
       });
     }
 
-    function updateCurrentInningLabel(){ currentInningLabel.textContent = `현재 이닝: ${currentInning}회`; }
-
-    function renderPlayerNameInputs(){
-      let html = "";
-      for (let i=0;i<players;i++){
-        html += `<div class="field"><label>팀(선수) ${i+1} 이름</label><input type="text" class="player-name-input" data-player="${i}" value="팀 ${i+1}" /></div>`;
-      }
-      playerNamesContainer.innerHTML = html;
-      const nameInputs = playerNamesContainer.querySelectorAll(".player-name-input");
-      nameInputs.forEach(inp => inp.addEventListener("input", () => {
-        renderBody(); renderButtons(); renderBatterTeamSelect(); renderBatterTable(); renderPitcherTeamSelect(); renderPitcherTable();
-      }));
+    function updateCurrentInningLabel() {
+      currentInningLabel.textContent = `현재 이닝: ${currentInning}회`;
     }
 
-    function renderButtons(){
+    function renderButtons() {
       const names = getPlayerNames();
       let html = "";
-      for (let i=0;i<players;i++){
-        const label = (names[i]||`팀 ${i+1}`) + " +1점";
-        html += `<button class="primary team-btn" data-team="${i}">${label}</button>`;
+
+      for (let i = 0; i < players; i++) {
+        html += `<button class="primary team-btn" data-team="${i}">${names[i]} +1점</button>`;
       }
+
       html += `<button id="nextInning">다음 이닝</button>`;
       html += `<button class="danger" id="resetGame">전체 초기화</button>`;
+
       buttonsRow.innerHTML = html;
 
-      buttonsRow.querySelectorAll(".team-btn").forEach(btn=>{
-        btn.addEventListener("click", e=>{
-          const tm = parseInt(e.target.dataset.team,10);
-          if (currentInning > innings) return;
-          scores[tm][currentInning-1] += 1;
-          renderBody();
+      buttonsRow.querySelectorAll(".team-btn")
+        .forEach(btn => {
+          btn.addEventListener("click", e => {
+            const tm = parseInt(e.target.dataset.team, 10);
+            if (currentInning > innings) return;
+            scores[tm][currentInning - 1] += 1;
+            renderBody();
+          });
         });
+
+      document.getElementById("nextInning").addEventListener("click", () => {
+        if (currentInning < innings) {
+          currentInning++;
+          updateCurrentInningLabel();
+          renderBody();
+        } else alert("마지막 이닝입니다!");
       });
-      document.getElementById("nextInning").addEventListener("click", ()=>{
-        if (currentInning < innings) { currentInning++; updateCurrentInningLabel(); renderBody(); }
-        else alert("마지막 이닝입니다! 😄");
-      });
-      document.getElementById("resetGame").addEventListener("click", ()=>{
+
+      document.getElementById("resetGame").addEventListener("click", () => {
         if (!confirm("모든 점수를 초기화할까요?")) return;
         scores = createEmptyScores(players, innings);
         initBatterStatsForTeams();
         initPitcherStatsForTeams();
         currentInning = 1;
         updateCurrentInningLabel();
-        renderHeader(); renderBody(); renderButtons(); renderBatterTeamSelect(); renderBatterTable(); renderPitcherTeamSelect(); renderPitcherTable();
+        renderHeader(); renderBody(); renderButtons();
+        renderBatterTeamSelect(); renderBatterTable();
+        renderPitcherTeamSelect(); renderPitcherTable();
       });
     }
 
-    /** ---------------- BATTER ---------------- */
-    function renderBatterTeamSelect(){
+    function renderBatterTeamSelect() {
       const names = getPlayerNames();
       let opts = "";
-      for (let t=0;t<players;t++){
-        const sel = t===currentBatterTeam ? "selected" : "";
-        opts += `<option value="${t}" ${sel}>${names[t]||`팀 ${t+1}`}</option>`;
+      for (let t = 0; t < players; t++) {
+        const sel = t === currentBatterTeam ? "selected" : "";
+        opts += `<option value="${t}" ${sel}>${names[t]}</option>`;
       }
       batterTeamSelect.innerHTML = opts;
     }
 
-    function renderBatterHeader(){
+    function renderBatterHeader() {
       let h = "<tr>";
       h += "<th>타순</th><th>타자명</th><th>타수</th><th>득점</th><th>안타</th><th>타점</th><th>홈런</th><th>삼진</th><th>도루</th><th>볼넷</th><th>루타</th><th>타율</th><th>출루율</th><th>장타율</th><th>OPS</th>";
-      for (let i=1;i<=innings;i++) h += `<th>${i}</th>`;
+      for (let i = 1; i <= innings; i++) h += `<th>${i}</th>`;
       h += "</tr>";
       batterTableHead.innerHTML = h;
     }
 
-    function computeRates(ab, h, bb, tb){
-      ab = Number(ab) || 0; h = Number(h) || 0; bb = Number(bb) || 0; tb = Number(tb) || 0;
+    function computeRates(ab, h, bb, tb) {
+      ab = Number(ab) || 0;
+      h = Number(h) || 0;
+      bb = Number(bb) || 0;
+      tb = Number(tb) || 0;
+
       let avgStr = "-", obpStr = "-", slgStr = "-", opsStr = "-";
       let avgNum = null, obpNum = null, slgNum = null;
-      if (ab > 0) { avgNum = h/ab; slgNum = tb/ab; }
-      if (ab + bb > 0) { obpNum = (h + bb) / (ab + bb); }
+
+      if (ab > 0) {
+        avgNum = h / ab;
+        slgNum = tb / ab;
+      }
+      if (ab + bb > 0) {
+        obpNum = (h + bb) / (ab + bb);
+      }
+
       if (avgNum !== null) avgStr = avgNum.toFixed(3);
       if (obpNum !== null) obpStr = obpNum.toFixed(3);
       if (slgNum !== null) slgStr = slgNum.toFixed(3);
       if (obpNum !== null && slgNum !== null) opsStr = (obpNum + slgNum).toFixed(3);
-      return { avgStr, obpStr, slgStr, opsStr, avgNum, obpNum, slgNum };
+
+      return { avgStr, obpStr, slgStr, opsStr };
     }
 
-    function renderBatterTable(){
+    function renderBatterTable() {
       renderBatterHeader();
-      if (!batterStats[currentBatterTeam]) return;
-      const teamNames = getPlayerNames();
-      const teamName = teamNames[currentBatterTeam] || `팀 ${currentBatterTeam+1}`;
       const rows = batterStats[currentBatterTeam];
+      if (!rows) return;
+
+      let teamTotals = { ab:0, r:0, h:0, rbi:0, hr:0, so:0, sb:0, bb:0, tb:0 };
+
       let body = "";
 
-      // team totals
-      let totalAB=0,totalR=0,totalH=0,totalRBI=0,totalHR=0,totalSO=0,totalSB=0,totalBB=0,totalTB=0;
+      for (let i = 0; i < lineupSize; i++) {
+        const row = rows[i];
+        let name = row.name || `${getPlayerNames()[currentBatterTeam]} ${i+1}`;
 
-      for (let i=0;i<lineupSize;i++){
-        const row = rows[i] || createDefaultBatterRow();
-        rows[i] = row;
-        let name = row.name || (i===0 ? teamName : teamName + i);
-        const ab = Number(row.ab) || 0;
-        const r = Number(row.r) || 0;
-        const h = Number(row.h) || 0;
-        const rbi = Number(row.rbi) || 0;
-        const hr = Number(row.hr) || 0;
-        const so = Number(row.so) || 0;
-        const sb = Number(row.sb) || 0;
-        const bb = Number(row.bb) || 0;
-        const tb = Number(row.tb) || 0;
+        const ab = Number(row.ab)||0, r=row.r||0, h=row.h||0, rbi=row.rbi||0;
+        const hr=row.hr||0, so=row.so||0, sb=row.sb||0, bb=row.bb||0, tb=row.tb||0;
 
-        totalAB+=ab; totalR+=r; totalH+=h; totalRBI+=rbi; totalHR+=hr; totalSO+=so; totalSB+=sb; totalBB+=bb; totalTB+=tb;
+        teamTotals.ab += ab; teamTotals.r += r;
+        teamTotals.h += h; teamTotals.rbi += rbi;
+        teamTotals.hr += hr; teamTotals.so += so;
+        teamTotals.sb += sb; teamTotals.bb += bb;
+        teamTotals.tb += tb;
 
-        const { avgStr, obpStr, slgStr, opsStr } = computeRates(ab,h,bb,tb);
+        const rate = computeRates(ab,h,bb,tb);
 
-        body += "<tr>";
-        body += `<td>${i+1}</td>`;
-        body += `<td><input type="text" class="batter-name-input" data-index="${i}" value="${name}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="ab" value="${row.ab ?? 0}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="r" value="${row.r ?? 0}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="h" value="${row.h ?? 0}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="rbi" value="${row.rbi ?? 0}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="hr" value="${row.hr ?? 0}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="so" value="${row.so ?? 0}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="sb" value="${row.sb ?? 0}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="bb" value="${row.bb ?? 0}"></td>`;
-        body += `<td><input type="number" min="0" class="stat-cell" data-index="${i}" data-field="tb" value="${row.tb ?? 0}"></td>`;
-        body += `<td>${avgStr}</td><td>${obpStr}</td><td>${slgStr}</td><td>${opsStr}</td>`;
+        body += `<tr>
+          <td>${i+1}</td>
+          <td><input class="batter-name-input" data-index="${i}" value="${name}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="ab" value="${ab}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="r" value="${r}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="h" value="${h}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="rbi" value="${rbi}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="hr" value="${hr}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="so" value="${so}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="sb" value="${sb}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="bb" value="${bb}"></td>
+          <td><input type="number" class="stat-cell" data-index="${i}" data-field="tb" value="${tb}"></td>
+          <td>${rate.avgStr}</td>
+          <td>${rate.obpStr}</td>
+          <td>${rate.slgStr}</td>
+          <td>${rate.opsStr}</td>`;
 
-        for (let inn=0; inn<innings; inn++){
+        for (let inn = 0; inn < innings; inn++) {
           const val = row.inningResults[inn] || "";
-          body += `<td><input type="text" class="detail-cell" data-index="${i}" data-inning="${inn}" value="${val}"></td>`;
+          body += `<td><input class="detail-cell" data-index="${i}" data-inning="${inn}" value="${val}"></td>`;
         }
-        body += "</tr>";
+        body += `</tr>`;
       }
 
-      // team totals row
-      const teamRates = computeRates(totalAB, totalH, totalBB, totalTB);
-      body += `<tr class="team-total-row">`;
-      body += `<td colspan="2">팀 합계</td>`;
-      body += `<td>${totalAB}</td><td>${totalR}</td><td>${totalH}</td><td>${totalRBI}</td><td>${totalHR}</td><td>${totalSO}</td><td>${totalSB}</td><td>${totalBB}</td><td>${totalTB}</td>`;
-      body += `<td>${teamRates.avgStr}</td><td>${teamRates.obpStr}</td><td>${teamRates.slgStr}</td><td>${teamRates.opsStr}</td>`;
-      for (let inn=0; inn<innings; inn++) body += `<td>-</td>`;
-      body += `</tr>`;
+      const teamRate = computeRates(teamTotals.ab, teamTotals.h, teamTotals.bb, teamTotals.tb);
+
+      body += `<tr class="team-total-row">
+        <td colspan="2">팀 합계</td>
+        <td>${teamTotals.ab}</td><td>${teamTotals.r}</td><td>${teamTotals.h}</td>
+        <td>${teamTotals.rbi}</td><td>${teamTotals.hr}</td>
+        <td>${teamTotals.so}</td><td>${teamTotals.sb}</td>
+        <td>${teamTotals.bb}</td><td>${teamTotals.tb}</td>
+        <td>${teamRate.avgStr}</td>
+        <td>${teamRate.obpStr}</td>
+        <td>${teamRate.slgStr}</td>
+        <td>${teamRate.opsStr}</td>`;
+
+      for (let i = 0; i < innings; i++) body += "<td>-</td>";
+      body += "</tr>";
 
       batterTableBody.innerHTML = body;
 
-      // listeners
       batterTableBody.querySelectorAll("input.batter-name-input").forEach(inp=>{
         inp.addEventListener("input", e=>{
           const idx = parseInt(e.target.dataset.index,10);
           batterStats[currentBatterTeam][idx].name = e.target.value;
         });
       });
+
       batterTableBody.querySelectorAll("input.stat-cell").forEach(inp=>{
-        inp.addEventListener("input", e=>{
-          const idx = parseInt(e.target.dataset.index,10);
-          const field = e.target.dataset.field;
-          const val = parseInt(e.target.value,10);
-          batterStats[currentBatterTeam][idx][field] = isNaN(val) ? 0 : val;
-          renderBatterTable(); // recalc rates + team totals
+        inp.addEventListener("change", e=>{
+          const idx=parseInt(e.target.dataset.index,10);
+          const field=e.target.dataset.field;
+          const val=parseInt(e.target.value,10);
+          batterStats[currentBatterTeam][idx][field] = isNaN(val)?0:val;
+          renderBatterTable();
         });
       });
+
       batterTableBody.querySelectorAll("input.detail-cell").forEach(inp=>{
         inp.addEventListener("input", e=>{
-          const idx = parseInt(e.target.dataset.index,10);
-          const inn = parseInt(e.target.dataset.inning,10);
+          const idx=parseInt(e.target.dataset.index,10);
+          const inn=parseInt(e.target.dataset.inning,10);
           batterStats[currentBatterTeam][idx].inningResults[inn] = e.target.value;
         });
       });
     }
 
-    function resizeLineup(newSize){
+    function resizeLineup(newSize) {
       lineupSize = newSize;
-      for (let t=0;t<players;t++){
+      for (let t=0;t<players;t++) {
         const rows = batterStats[t] || [];
-        if (rows.length < newSize) for (let i=rows.length;i<newSize;i++) rows.push(createDefaultBatterRow());
-        else rows.length = newSize;
+        if (rows.length < newSize) {
+          for (let i=rows.length;i<newSize;i++) rows.push(createDefaultBatterRow());
+        } else {
+          rows.length = newSize;
+        }
         batterStats[t] = rows;
       }
       renderBatterTable();
     }
 
-    function resetForInningChange(){
-      scores = createEmptyScores(players, innings);
-      for (let t=0;t<players;t++){
-        const rows = batterStats[t] || [];
-        rows.forEach(row=>{
-          const oldArr = row.inningResults || [];
-          const newArr = new Array(innings).fill("");
-          const minLen = Math.min(oldArr.length, newArr.length);
-          for (let i=0;i<minLen;i++) newArr[i] = oldArr[i];
-          row.inningResults = newArr;
-        });
-        batterStats[t] = rows;
-      }
-      currentInning = 1;
-      updateCurrentInningLabel();
-      renderHeader(); renderBody(); renderButtons(); renderBatterTable();
-    }
-
-    /** ---------------- PITCHER (ERA / WHIP) ---------------- */
-    function renderPitcherTeamSelect(){
+    function renderPitcherTeamSelect() {
       const names = getPlayerNames();
       let opts = "";
-      for (let t=0;t<players;t++){
-        const sel = t===currentPitcherTeam ? "selected" : "";
-        opts += `<option value="${t}" ${sel}>${names[t]||`팀 ${t+1}`}</option>`;
+      for (let t = 0; t < players; t++) {
+        const sel = (t === currentPitcherTeam) ? "selected" : "";
+        opts += `<option value="${t}" ${sel}>${names[t]}</option>`;
       }
       pitcherTeamSelect.innerHTML = opts;
     }
 
-    // inning string -> numeric innings (e.g., "5.1" => 5 + 1/3)
-    function parseInnings(innStr){
-      if (innStr === null || innStr === undefined) return 0;
-      const s = String(innStr).trim();
-      if (s.length === 0) return 0;
+    function parseInnings(innStr) {
+      if (!innStr) return 0;
+      const s = String(innStr);
       if (!s.includes(".")) {
         const n = Number(s);
         return isNaN(n) ? 0 : n;
       }
       const parts = s.split(".");
       const whole = Number(parts[0]) || 0;
-      const frac = parts[1] === undefined ? 0 : parts[1];
-      // if fractional is single digit 0/1/2 -> treat as outs (1->1 out, 2->2 outs)
-      if (/^[0-9]+$/.test(frac) && frac.length === 1 && (frac === "0" || frac === "1" || frac === "2")) {
-        const outs = Number(frac);
-        return whole + (outs / 3);
+      const frac = parts[1];
+      if (/^[0-2]$/.test(frac)) {
+        return whole + (Number(frac)/3);
       }
-      // otherwise try parse decimal directly
-      const asNum = Number(s);
-      return isNaN(asNum) ? 0 : asNum;
+      const f = Number(s);
+      return isNaN(f)?0:f;
     }
 
-    function computePitcherERA(er, ip){
-      const ER = Number(er) || 0;
-      const IP = Number(ip) || 0;
+    function computePitcherERA(er, ip) {
+      const ER = Number(er)||0;
+      const IP = Number(ip)||0;
       if (IP <= 0) return "-";
-      return ((ER * 9) / IP).toFixed(2);
+      return ((ER*9)/IP).toFixed(2);
     }
 
-    function computePitcherWHIP(hits, bb, ip){
-      const H = Number(hits) || 0;
-      const BB = Number(bb) || 0;
-      const IP = Number(ip) || 0;
+    function computePitcherWHIP(hits, bb, ip) {
+      const H = Number(hits)||0;
+      const BB = Number(bb)||0;
+      const IP = Number(ip)||0;
       if (IP <= 0) return "-";
-      return ((H + BB) / IP).toFixed(2);
+      return ((H+BB)/IP).toFixed(2);
     }
 
-    function renderPitcherTable(){
-      const team = currentPitcherTeam;
-      const rows = pitcherStats[team] || [];
+    function renderPitcherTable() {
+      const rows = pitcherStats[currentPitcherTeam];
       let html = "";
 
-      // team accumulators
       let teamIP = 0, teamER = 0, teamH = 0, teamBB = 0;
 
       rows.forEach((p, idx) => {
-        const ipNumeric = parseInnings(p.inn);
-        const er = Number(p.er) || 0;
-        const h = Number(p.h) || 0;
-        const bb = Number(p.bb) || 0;
+        const ipNum = parseInnings(p.inn);
+        teamIP += ipNum;
+        teamER += Number(p.er)||0;
+        teamH += Number(p.h)||0;
+        teamBB += Number(p.bb)||0;
 
-        teamIP += ipNumeric;
-        teamER += er;
-        teamH += h;
-        teamBB += bb;
-
-        const eraStr = ipNumeric > 0 ? computePitcherERA(er, ipNumeric) : "-";
-        const whipStr = ipNumeric > 0 ? computePitcherWHIP(h, bb, ipNumeric) : "-";
+        const eraStr = ipNum>0 ? computePitcherERA(p.er, ipNum) : "-";
+        const whipStr = ipNum>0 ? computePitcherWHIP(p.h, p.bb, ipNum) : "-";
 
         html += `
           <tr>
-            <td><input class="pitcher-input" data-idx="${idx}" data-field="name" value="${p.name}" /></td>
-            <td><input class="pitcher-input" data-idx="${idx}" data-field="inn" value="${p.inn}" /></td>
-            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="h" value="${p.h}" /></td>
-            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="r" value="${p.r}" /></td>
-            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="er" value="${p.er}" /></td>
-            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="bb" value="${p.bb}" /></td>
-            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="so" value="${p.so}" /></td>
-            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="hr" value="${p.hr}" /></td>
-            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="pit" value="${p.pit}" /></td>
+            <td><input class="pitcher-input" data-idx="${idx}" data-field="name" value="${p.name}"></td>
+            <td><input class="pitcher-input" data-idx="${idx}" data-field="inn" value="${p.inn}"></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="h" value="${p.h}"></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="r" value="${p.r}"></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="er" value="${p.er}"></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="bb" value="${p.bb}"></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="so" value="${p.so}"></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="hr" value="${p.hr}"></td>
+            <td><input class="pitcher-input" type="number" min="0" data-idx="${idx}" data-field="pit" value="${p.pit}"></td>
             <td>${eraStr}</td>
             <td>${whipStr}</td>
-            <td><button class="danger small delPitcherBtn" data-idx="${idx}">삭제</button></td>
+            <td><button class="danger small delPitcherBtn" data-idx="${idx}">x</button></td>
           </tr>
         `;
       });
 
-      // team totals row (ERA and WHIP aggregated)
-      const teamERA = teamIP > 0 ? ((teamER * 9) / teamIP).toFixed(2) : "-";
-      const teamWHIP = teamIP > 0 ? ((teamH + teamBB) / teamIP).toFixed(2) : "-";
-
       if (rows.length > 0) {
-        html += `<tr class="team-total-row">`;
-        html += `<td colspan="2">팀 합계</td>`;
-        html += `<td>${teamH}</td>`; // 피안타
-        html += `<td>-</td>`; // 실점 (합계 R could be shown but we didn't accumulate it here)
-        html += `<td>${teamER}</td>`; // 자책
-        html += `<td>${teamBB}</td>`; // 볼넷
-        html += `<td>-</td><td>-</td><td>${teamIP.toFixed(1)}</td>`; // 투구수 칸 대신 IP(소수표현)
-        html += `<td>${teamERA}</td><td>${teamWHIP}</td><td>-</td>`;
-        html += `</tr>`;
-      } else {
-        // 아무 투수도 없으면 빈 바디 허용
+        const teamERA = teamIP>0 ? ((teamER*9)/teamIP).toFixed(2) : "-";
+        const teamWHIP = teamIP>0 ? ((teamH+teamBB)/teamIP).toFixed(2) : "-";
+
+        html += `<tr class="team-total-row">
+          <td colspan="2">팀 합계</td>
+          <td>${teamH}</td>
+          <td>-</td>
+          <td>${teamER}</td>
+          <td>${teamBB}</td>
+          <td>-</td><td>-</td><td>${teamIP.toFixed(1)}</td>
+          <td>${teamERA}</td>
+          <td>${teamWHIP}</td>
+          <td>-</td>
+        </tr>`;
       }
 
       pitcherTableBody.innerHTML = html;
 
-      // attach listeners after innerHTML set
       pitcherTableBody.querySelectorAll(".pitcher-input").forEach(inp=>{
-        inp.addEventListener("input", (e)=>{
-          const idx = parseInt(e.target.dataset.idx,10);
-          const field = e.target.dataset.field;
-          const value = e.target.type === "number"
-            ? (isNaN(parseInt(e.target.value,10)) ? 0 : parseInt(e.target.value,10))
-            : e.target.value;
-          pitcherStats[team][idx][field] = value;
-          // re-render to update ERA/WHIP and team totals
+        inp.addEventListener("change", e=>{
+          const idx=parseInt(e.target.dataset.idx,10);
+          const field=e.target.dataset.field;
+          const value=e.target.type==="number" ? (parseInt(e.target.value,10)||0) : e.target.value;
+          pitcherStats[currentPitcherTeam][idx][field] = value;
           renderPitcherTable();
         });
       });
 
       pitcherTableBody.querySelectorAll(".delPitcherBtn").forEach(btn=>{
-        btn.addEventListener("click", (e)=>{
-          const idx = parseInt(e.target.dataset.idx,10);
-          pitcherStats[team].splice(idx,1);
+        btn.addEventListener("click", e=>{
+          const idx=parseInt(e.target.dataset.idx,10);
+          pitcherStats[currentPitcherTeam].splice(idx,1);
           renderPitcherTable();
         });
       });
     }
 
     addPitcherBtn.addEventListener("click", ()=>{
-      pitcherStats[currentPitcherTeam].push({ name:"", inn:"", h:0, r:0, er:0, bb:0, so:0, hr:0, pit:0 });
+      pitcherStats[currentPitcherTeam].push({
+        name:"", inn:"", h:0, r:0, er:0, bb:0, so:0, hr:0, pit:0
+      });
       renderPitcherTable();
     });
 
@@ -651,99 +672,157 @@
       renderPitcherTable();
     });
 
-    /** ---------------- Storage / JSON ---------------- */
-    function saveGame(){
-      const state = { innings, players, currentInning, lineupSize, scores, batterStats, pitcherStats, playerNames: getPlayerNames(), currentBatterTeam, currentPitcherTeam };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); alert("현재 기록을 저장했어요!"); }
-      catch(e) { alert("저장 중 오류 발생"); }
+    function saveGame() {
+      const state = {
+        innings, players, currentInning, lineupSize,
+        scores, batterStats, pitcherStats,
+        playerNames, currentBatterTeam, currentPitcherTeam
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        alert("현재 기록을 저장했어요!");
+      } catch(e) {
+        alert("저장 중 오류 발생");
+      }
     }
 
-    function applyLoadedState(state){
-      innings = state.innings || innings;
-      players = state.players || players;
-      currentInning = state.currentInning || 1;
-      lineupSize = state.lineupSize || lineupSize;
-      scores = state.scores || createEmptyScores(players, innings);
-      batterStats = state.batterStats || [];
-      pitcherStats = state.pitcherStats || [];
-      const savedNames = state.playerNames || [];
-      currentBatterTeam = Math.min(state.currentBatterTeam ?? 0, players-1);
-      currentPitcherTeam = Math.min(state.currentPitcherTeam ?? 0, players-1);
+    function applyLoadedState(state) {
+      innings = state.innings;
+      players = state.players;
+      currentInning = state.currentInning;
+      lineupSize = state.lineupSize;
+      scores = state.scores;
+      batterStats = state.batterStats;
+      pitcherStats = state.pitcherStats;
+      playerNames = state.playerNames;
+      currentBatterTeam = state.currentBatterTeam;
+      currentPitcherTeam = state.currentPitcherTeam;
 
-      inningsSelect.value = String(innings);
-      playersSelect.value = String(players);
-      lineupSizeSelect.value = String(lineupSize);
+      inningsSelect.value = innings;
+      playersSelect.value = players;
+      lineupSizeSelect.value = lineupSize;
 
       renderHeader();
       renderPlayerNameInputs();
-
-      const nameInputs = playerNamesContainer.querySelectorAll(".player-name-input");
-      savedNames.forEach((nm,i)=> {
-        const inp = Array.from(nameInputs).find(el => parseInt(el.dataset.player,10)===i);
-        if (inp && nm) inp.value = nm;
-      });
-
-      renderBody(); renderButtons(); renderBatterTeamSelect(); renderBatterTable(); renderPitcherTeamSelect(); renderPitcherTable(); updateCurrentInningLabel();
+      renderBody(); renderButtons();
+      renderBatterTeamSelect(); renderBatterTable();
+      renderPitcherTeamSelect(); renderPitcherTable();
+      updateCurrentInningLabel();
     }
 
-    function loadGame(){
+    function loadGame() {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) { alert("저장된 기록이 없어요."); return; }
-      try { const state = JSON.parse(raw); applyLoadedState(state); alert("불러왔어요."); }
-      catch(e){ alert("불러오는 중 오류"); }
+      if (!raw) { alert("저장된 기록이 없습니다."); return; }
+      try {
+        const state = JSON.parse(raw);
+        applyLoadedState(state);
+        alert("불러왔습니다!");
+      } catch(e) {
+        alert("불러오기 중 오류");
+      }
     }
 
     saveGameBtn.addEventListener("click", saveGame);
     loadGameBtn.addEventListener("click", loadGame);
 
     exportJsonBtn.addEventListener("click", ()=>{
-      const state = { innings, players, currentInning, lineupSize, scores, batterStats, pitcherStats, playerNames: getPlayerNames(), currentBatterTeam, currentPitcherTeam };
+      const state = {
+        innings, players, currentInning, lineupSize,
+        scores, batterStats, pitcherStats,
+        playerNames, currentBatterTeam, currentPitcherTeam
+      };
       const json = JSON.stringify(state, null, 2);
-      const blob = new Blob([json], { type: "application/json" });
+      const blob = new Blob([json], { type:"application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const now = new Date();
-      const stamp = now.toISOString().slice(0,19).replace(/[:T]/g,"-");
-      a.download = `scoreboard-${stamp}.json`;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      a.download = "scoreboard.json";
+      a.click();
+      URL.revokeObjectURL(url);
     });
 
-    importJsonBtn.addEventListener("click", ()=> { importJsonInput.value = ""; importJsonInput.click(); });
-    importJsonInput.addEventListener("change", (e)=>{
-      const file = e.target.files[0]; if (!file) return;
+    importJsonBtn.addEventListener("click", ()=>{
+      importJsonInput.value = "";
+      importJsonInput.click();
+    });
+
+    importJsonInput.addEventListener("change", e=>{
+      const file = e.target.files[0];
+      if (!file) return;
       const reader = new FileReader();
-      reader.onload = ()=> {
-        try { const state = JSON.parse(reader.result); applyLoadedState(state); alert("JSON에서 불러왔어요."); }
-        catch(err){ alert("JSON 읽는 중 오류"); }
+      reader.onload = ()=>{
+        try {
+          const state = JSON.parse(reader.result);
+          applyLoadedState(state);
+          alert("JSON에서 불러왔습니다!");
+        } catch {
+          alert("JSON 읽는 중 오류");
+        }
       };
       reader.readAsText(file, "utf-8");
     });
 
-    /** ---------------- events ---------------- */
     inningsSelect.addEventListener("change", ()=>{
       innings = parseInt(inningsSelect.value,10);
-      resetForInningChange();
+      scores = createEmptyScores(players, innings);
+      for (let t=0;t<players;t++){
+        batterStats[t].forEach(row=>{
+          const old = row.inningResults || [];
+          const newArr = new Array(innings).fill("");
+          for (let i=0;i<Math.min(old.length, innings); i++){
+            newArr[i] = old[i];
+          }
+          row.inningResults = newArr;
+        });
+      }
+      currentInning = 1;
+      updateCurrentInningLabel();
+      renderHeader(); renderBody(); renderButtons(); renderBatterTable();
     });
 
     playersSelect.addEventListener("change", ()=>{
       players = parseInt(playersSelect.value,10);
       scores = createEmptyScores(players, innings);
+      playerNames = Array(players).fill("");
+
+      initBatterStatsForTeams();
+      initPitcherStatsForTeams();
+
+      currentBatterTeam = 0;
+      currentPitcherTeam = 0;
       currentInning = 1;
+
       updateCurrentInningLabel();
-      renderHeader(); renderPlayerNameInputs(); renderBody();
-      initBatterStatsForTeams(); initPitcherStatsForTeams();
-      currentBatterTeam = 0; currentPitcherTeam = 0;
-      renderButtons(); renderBatterTeamSelect(); renderBatterTable(); renderPitcherTeamSelect(); renderPitcherTable();
+
+      renderHeader();
+      renderPlayerNameInputs();
+      renderBody();
+      renderButtons();
+      renderBatterTeamSelect(); renderBatterTable();
+      renderPitcherTeamSelect(); renderPitcherTable();
     });
 
-    batterTeamSelect.addEventListener("change", ()=> { currentBatterTeam = parseInt(batterTeamSelect.value,10); renderBatterTable(); });
-    lineupSizeSelect.addEventListener("change", ()=> { const newSize = parseInt(lineupSizeSelect.value,10); resizeLineup(newSize); });
+    batterTeamSelect.addEventListener("change", ()=>{
+      currentBatterTeam = parseInt(batterTeamSelect.value,10);
+      renderBatterTable();
+    });
 
-    // initial render
-    renderHeader(); renderPlayerNameInputs(); renderBody();
-    initBatterStatsForTeams(); initPitcherStatsForTeams();
-    renderButtons(); renderBatterTeamSelect(); renderBatterTable(); renderPitcherTeamSelect(); renderPitcherTable(); updateCurrentInningLabel();
+    lineupSizeSelect.addEventListener("change", ()=>{
+      resizeLineup(parseInt(lineupSizeSelect.value,10));
+    });
+
+    initBatterStatsForTeams();
+    initPitcherStatsForTeams();
+
+    renderHeader();
+    renderPlayerNameInputs();
+    renderButtons();
+    renderBody();
+    renderBatterTeamSelect();
+    renderBatterTable();
+    renderPitcherTeamSelect();
+    renderPitcherTable();
+    updateCurrentInningLabel();
   </script>
 </body>
 </html>
